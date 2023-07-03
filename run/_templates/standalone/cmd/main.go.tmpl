@@ -1,0 +1,195 @@
+package main
+
+import (
+	"context"
+	_ "embed"
+	"errors"
+	"fmt"
+	"io/ioutil"
+	"log"
+	"net/http"
+	"os"
+	"os/signal"
+	"path/filepath"
+	"strings"
+	"syscall"
+	"time"
+
+	"{{.GraphqlFqn}}/cmd/auth"
+
+	"{{.GraphqlFqn}}/config"
+	"{{.GraphqlFqn}}/resolvers"
+
+	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/middleware"
+	"github.com/graph-gophers/graphql-go"
+	"github.com/graph-gophers/graphql-go/relay"
+	"github.com/rs/cors"
+	"go.opencensus.io/plugin/ochttp"
+	"go.uber.org/zap"
+)
+
+func main() {
+	cfg := config.MustLoad()
+
+	logger := mustMakeLogger(true)
+
+	logger.Info("GraphQL server starting")
+
+	ctx := context.Background()
+
+	handler := routes(logger, cfg.CORSAllowedOrigins, cfg.GraphiQLEnabled, cfg.SchemaRoot)
+
+	startServer(ctx, logger, cfg.Host, cfg.Port, handler)
+}
+
+func routes(log *zap.SugaredLogger, cORSAllowedOrigins string, graphiQLEnabled bool, schemaRoot string) http.Handler {
+	router := chi.NewRouter()
+
+	router.Use(
+		cors.New(cors.Options{
+			AllowedOrigins:   strings.Split(cORSAllowedOrigins, ","),
+			AllowedMethods:   []string{http.MethodGet, http.MethodPost},
+			AllowedHeaders:   []string{"Authorization", "Content-Type"},
+			AllowCredentials: false,
+			MaxAge:           300,
+		}).Handler,
+		middleware.Compress(5, "application/json"),
+		middleware.StripSlashes,
+		middleware.RequestID,
+		middleware.RealIP,
+		middleware.Recoverer,
+		middleware.Timeout(time.Second*120),
+		middleware.Heartbeat("/ping"),
+		authMiddleWare(),
+	)
+
+	graphiqlEndpoint(router, log, graphiQLEnabled)
+
+	schema := makeGraphQLSchema(log, schemaRoot)
+	router.Method(http.MethodPost, "/api/graphql", &relay.Handler{Schema: schema})
+
+	return &ochttp.Handler{Handler: router}
+}
+
+//go:embed schema.graphql
+var baseSchema string
+
+func makeGraphQLSchema(logger *zap.SugaredLogger, schemaRoot string) *graphql.Schema {
+	rootResolver := resolvers.NewRoot()
+
+	moduleSchemas, err := getModuleSchemas(schemaRoot)
+	if err != nil {
+		panic(err)
+	}
+	allSchemas := fmt.Sprintf("%s\n%s", baseSchema, moduleSchemas)
+
+	opts := []graphql.SchemaOpt{graphql.UseFieldResolvers()}
+	schemaResolver, err := graphql.ParseSchema(allSchemas, rootResolver, opts...)
+	if err != nil {
+		logger.With("err", err).Panic("making graphql schema resolver")
+	}
+
+	return schemaResolver
+}
+
+func mustMakeLogger(plainLogger bool) *zap.SugaredLogger {
+	logger, err := zap.NewProduction()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if plainLogger {
+		logger, err = zap.NewDevelopment()
+		if err != nil {
+			log.Fatal(err)
+		}
+		logger.Warn("logger started in plain more, use only in non production environment")
+	}
+
+	return logger.Sugar()
+}
+
+func graphiqlEndpoint(router *chi.Mux, log *zap.SugaredLogger, isEnabled bool) {
+	if !isEnabled {
+		return
+	}
+
+	log.With("route", "/graphiql").
+		Warn("graphiql handler enabled, use only in non production environment")
+
+	router.Get("/graphiql", graphiql(log))
+}
+
+//go:embed graphiql.html
+var graphiqlHTML []byte
+
+func graphiql(logger *zap.SugaredLogger) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		_, err := w.Write(graphiqlHTML)
+		if err != nil {
+			logger.With("err", err).Error("http write error")
+		}
+	}
+}
+
+func startServer(ctx context.Context, logger *zap.SugaredLogger, host string, port int, handler http.Handler) {
+	server := &http.Server{
+		Addr:              fmt.Sprintf("%s:%d", host, port),
+		ReadHeaderTimeout: time.Second * 15,
+		Handler:           handler,
+	}
+
+	go func() {
+		logger.Infof("HTTP Server started on address: [%s]", server.Addr)
+
+		if err := server.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
+			logger.Fatalf("error starting server %v", err)
+			return
+		}
+	}()
+
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, syscall.SIGTERM, syscall.SIGINT)
+	<-c
+
+	shutdownTimeout := time.Second * 10
+	shutdownCtx, cancel := context.WithTimeout(ctx, shutdownTimeout)
+	defer cancel()
+	if err := server.Shutdown(shutdownCtx); err != nil {
+		logger.Fatalf("error shuting down server %v", err)
+		return
+	}
+}
+
+func getModuleSchemas(rootFolder string) (string, error) {
+	var schemaContent string
+
+	err := filepath.Walk(rootFolder, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if !info.IsDir() && strings.ToLower(info.Name()) == "schema.graphql" {
+			content, err := ioutil.ReadFile(path)
+			if err != nil {
+				return err
+			}
+
+			schemaContent += string(content)
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		fmt.Printf("Error: %v\n", err)
+		return "", err
+	}
+	return schemaContent, nil
+}
+
+func authMiddleWare() func(http.Handler) http.Handler {
+	//TODO add preferred token authentication method to Authenticate
+	return auth.NewService().Authenticate
+}

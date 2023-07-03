@@ -1,0 +1,27 @@
+type Query {
+  version: String!
+}
+
+type Mutation {
+}
+
+input PaginationInput {
+  limit: Int
+  offset: Int
+}
+
+input SortInput {
+  column: String
+  descending: Boolean
+}
+
+input SearchInput {
+  field: String
+  value: String
+}
+
+type Pagination {
+  limit: Int
+  offset: Int
+  total: Int
+}

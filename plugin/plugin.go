@@ -19,7 +19,7 @@ var Usage = api_v1.PluginUsageResponse{
 	Example:        "vision graphql create myGraphql",
 	Subcommands:    []string{"create"},
 	Flags:          []api_v1.PluginFlag{},
-	RequiresConfig: false,
+	RequiresConfig: true,
 }
 
 var DefaultConfig = api_v1.PluginConfigResponse{

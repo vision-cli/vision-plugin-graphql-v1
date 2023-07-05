@@ -19,7 +19,9 @@ import (
 )
 
 const (
-	SubCommand            = "create"
+	StandaloneGateway     = "standalone-gateway"
+	StandaloneGraphql     = "standalone-graphql"
+	Platform              = "platform"
 	PlatformTemplateDir   = "_templates/platform"
 	StandaloneTemplateDir = "_templates/standalone"
 )
@@ -33,24 +35,24 @@ var standaloneTemplateFiles embed.FS
 func Create(p *api_v1.PluginPlaceholders, executor execute.Executor, t tmpl.TmplWriter) error {
 	targetDir := filepath.Join(p.ProjectRoot, p.ServicesDirectory, p.ServiceNamespace, p.GraphqlServiceName)
 
-	if p.Deployment == "standalone-gateway" {
+	if p.Deployment == StandaloneGateway {
 		return fmt.Errorf("Not generating graphql server for standalone rest deployment")
 	}
 
 	reader := bufio.NewReader(os.Stdin)
 	if file.Exists(targetDir) &&
-		// !flag.IsForce(pflag.CommandLine) &&  // Needs to be added back in. Waiting for flags to be passed from api
+		// !flag.IsForce(cmd.Flags()) &&  // Needs to be added back in. Waiting for flags to be passed from api
 		!cli.Confirmed(reader, "graphql server already exists, overwrite?") {
 		return fmt.Errorf("Not overwriting existing graphql server")
 	}
 
-	if p.Deployment == "standalone-graphql" {
+	if p.Deployment == StandaloneGraphql {
 		if err := tmpl.GenerateFS(standaloneTemplateFiles, StandaloneTemplateDir, targetDir, p, true, t); err != nil {
 			log.Fatalf("Failed to generate standalone graphql server: %v\n", err)
 		}
 	}
 
-	if p.Deployment == "platform" {
+	if p.Deployment == Platform {
 		if err := tmpl.GenerateFS(platformTemplateFiles, PlatformTemplateDir, targetDir, p, true, t); err != nil {
 			log.Fatalf("Failed to generate platform graphql server: %v\n", err)
 		}

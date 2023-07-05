@@ -8,7 +8,7 @@ import (
 	"github.com/vision-cli/common/marshal"
 	"github.com/vision-cli/common/tmpl"
 	"github.com/vision-cli/vision-plugin-graphql-v1/placeholders"
-	"github.com/vision-cli/vision-plugin-graphql-v1/run"
+	run "github.com/vision-cli/vision-plugin-graphql-v1/run"
 )
 
 var Usage = api_v1.PluginUsageResponse{
@@ -19,7 +19,7 @@ var Usage = api_v1.PluginUsageResponse{
 	Example:        "vision graphql create myGraphql",
 	Subcommands:    []string{"create"},
 	Flags:          []api_v1.PluginFlag{},
-	RequiresConfig: false,
+	RequiresConfig: true,
 }
 
 var DefaultConfig = api_v1.PluginConfigResponse{

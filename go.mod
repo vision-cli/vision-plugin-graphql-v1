@@ -3,6 +3,7 @@ module github.com/vision-cli/vision-plugin-graphql-v1
 go 1.20
 
 require (
+	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.8.4
 	github.com/vision-cli/api v0.4.0
 	github.com/vision-cli/common v0.1.3

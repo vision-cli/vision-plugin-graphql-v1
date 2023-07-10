@@ -17,7 +17,7 @@ var Usage = api_v1.PluginUsageResponse{
 	Short:          "manage graphql",
 	Long:           "manage graphql using a standard template",
 	Example:        "vision graphql create myGraphql",
-	Subcommands:    []string{"create"},
+	Subcommands:    []string{"create", "transpile"},
 	Flags:          []api_v1.PluginFlag{},
 	RequiresConfig: true,
 }
@@ -58,6 +58,20 @@ func Handle(input string, e execute.Executor, t tmpl.TmplWriter) string {
 				return errorResponse(err)
 			}
 			err = run.Create(p, e, t)
+			if err != nil {
+				return errorResponse(err)
+			}
+			// TODO: Refactor this!!
+		case "transpile":
+			if len(req.Args) <= 1 ||
+				req.Args[placeholders.ArgsNameIndex] == "" {
+				return errorResponse(errors.New("missing graphql name"))
+			}
+			p, err := placeholders.SetupPlaceholders(req)
+			if err != nil {
+				return errorResponse(err)
+			}
+			err = run.Transpile(p, e, t)
 			if err != nil {
 				return errorResponse(err)
 			}

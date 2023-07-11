@@ -1,6 +1,7 @@
 package graphql
 
 import (
+	"fmt"
 	"log"
 	"path/filepath"
 
@@ -22,14 +23,37 @@ func Transpile(p *api_v1.PluginPlaceholders, executor execute.Executor, t tmpl.T
 	}
 
 	//Remove once actual values are being sent
-	service := model.Service{Name: "TestService", Enums: []model.Enum{}, Entities: []model.Entity{}}
-	moduleName := "TestModule"
+	service := model.Service{
+		Name: "projects",
+		Enums: []model.Enum{
+			{Name: "project-type", Values: []string{"not-assigned", "internal", "billable"}},
+		},
+		Entities: []model.Entity{
+			{
+				Name:        "project",
+				Persistence: "db",
+				Fields: []model.Field{
+					{Name: "name", Type: "string", Tag: "db:", IsArray: false, IsNullable: true, IsSearchable: false},
+				},
+			},
+		},
+	}
+	//Remove once actual values are being sent
+	moduleName := "projects"
 
-	vast_graphql.CreateSchemaGraphql(service, targetDir, moduleName)
-	vast_graphql.CreateGraphqlResolvers(service, p.ProjectRoot, moduleName,
-		p.ServiceFqn, moduleName+"/"+cases.Snake(p.ServiceName),
-		p.Remote+"/"+p.ProjectName, executor)
-	vast_graphql.UpdateRootResolver(service, p.ProjectRoot, moduleName)
+	if err := vast_graphql.CreateSchemaGraphql(service, targetDir, moduleName); err != nil {
+		return fmt.Errorf("Could not create graphql schema: %w", err)
+	}
+
+	if err := vast_graphql.CreateGraphqlResolvers(service, p.ProjectRoot, moduleName,
+		p.ServiceFqn, moduleName+"/"+cases.Snake(service.Name),
+		p.Remote+"/"+p.ProjectName, executor); err != nil {
+		return fmt.Errorf("Could not create graphql resolvers: %w", err)
+	}
+
+	if err := vast_graphql.UpdateRootResolver(service, p.ProjectRoot, moduleName); err != nil {
+		return fmt.Errorf("Could not create graphql schema: %w", err)
+	}
 
 	log.Printf("Successfully created graphql server %s\n", p.ProjectName)
 	return nil

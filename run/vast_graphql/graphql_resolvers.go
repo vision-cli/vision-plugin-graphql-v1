@@ -21,7 +21,7 @@ func CreateGraphqlResolvers(
 	remoteServiceDirectory string,
 	servicePath string,
 	projectPath string,
-	executor execute.Executor) {
+	executor execute.Executor) error {
 	astGoModels := NewCompletlyBlankAst("resolvers", service)
 	astGoModels.addImport("github.com/graph-gophers/graphql-go")
 	if hasSearchableEnumField(service.Entities) {
@@ -38,7 +38,7 @@ func CreateGraphqlResolvers(
 
 	// write the resolver file
 	if err := ioutil.WriteFile(goResolversPath, []byte(astGoModels.String()), WriteMode); err != nil {
-		panic(err)
+		return err
 	}
 
 	// write the resolver functions
@@ -52,17 +52,18 @@ func CreateGraphqlResolvers(
 	replacement := filepath.Join("../../", servicePath)
 
 	if err := md.Replace(targetDir, remoteServiceDirectory, replacement, executor); err != nil {
-		panic(err)
+		return err
 	}
 
 	if err := md.Replace(targetDir, projectPath+"/libs/go/persistence", "../../../libs/go/persistence", executor); err != nil {
-		panic(err)
+		return err
 	}
 
 	// run go mod tidy
 	if err := md.Tidy(targetDir, executor); err != nil {
-		panic(err)
+		return err
 	}
+	return nil
 }
 
 func hasSearchableEnumField(entities []model.Entity) bool {

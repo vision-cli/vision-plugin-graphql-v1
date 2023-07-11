@@ -10,7 +10,7 @@ import (
 	"github.com/vision-cli/common/transpiler/model"
 )
 
-func CreateSchemaGraphql(service model.Service, targetDir string, moduleName string) {
+func CreateSchemaGraphql(service model.Service, targetDir string, moduleName string) error {
 	astGql := NewGqlAst(moduleName)
 	astGql.addListTypes()
 	for _, entity := range service.Entities {
@@ -22,10 +22,10 @@ func CreateSchemaGraphql(service model.Service, targetDir string, moduleName str
 		}, entity.Fields...), isFilterStructRequired)
 	}
 	path := filepath.Join(targetDir, "proto", "schema.graphql")
-	err := ioutil.WriteFile(path, []byte(astGql.String()), WriteMode)
-	if err != nil {
-		panic(err)
+	if err := ioutil.WriteFile(path, []byte(astGql.String()), WriteMode); err != nil {
+		return err
 	}
+	return nil
 }
 
 func (a *AstGql) addFilterTypes(entity model.Entity) bool {

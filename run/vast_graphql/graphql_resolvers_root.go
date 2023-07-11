@@ -11,7 +11,7 @@ import (
 	"github.com/vision-cli/common/transpiler/model"
 )
 
-func UpdateRootResolver(service model.Service, projectRoot string, moduleName string) {
+func UpdateRootResolver(service model.Service, projectRoot string, moduleName string) error {
 	path := filepath.Join(projectRoot, "services", "default", "graphql", "resolvers", "root.go")
 	astRootResolver := NewAstFromFile(path)
 
@@ -20,8 +20,9 @@ func UpdateRootResolver(service model.Service, projectRoot string, moduleName st
 
 	err := ioutil.WriteFile(path, []byte(astRootResolver.String()), WriteMode)
 	if err != nil {
-		panic(err)
+		return err
 	}
+	return nil
 }
 
 func addFieldToRootStruct(a *AstGo, serviceName, moduleName string) *AstGo {

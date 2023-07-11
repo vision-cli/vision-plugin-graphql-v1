@@ -13,7 +13,7 @@ func TestHandle_WithValidUsageInput_ReturnsUsageResponseString(t *testing.T) {
 	e := mocks.NewMockExecutor()
 	tw := mocks.NewMockTmplWriter()
 	result := plugin.Handle(CreateRequest(t, "usage"), &e, &tw)
-	expected := `{"Version":"0.1.0","Use":"graphql","Short":"manage graphql","Long":"manage graphql using a standard template","Example":"vision graphql create myGraphql","Subcommands":["create"],"Flags":[],"RequiresConfig":false}`
+	expected := `{"Version":"0.1.0","Use":"graphql","Short":"manage graphql","Long":"manage graphql using a standard template","Example":"vision graphql create myGraphql","Subcommands":["create","transpile"],"Flags":[],"RequiresConfig":true}`
 	assert.Equal(t, expected, result)
 }
 

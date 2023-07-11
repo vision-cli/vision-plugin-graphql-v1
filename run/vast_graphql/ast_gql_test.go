@@ -52,14 +52,14 @@ type MultiTestProject {
 }
 
 extend type Query {
-  testGetProject(id: ID): TestProject
-  testListProjects(pagination: PaginationInput, searchBy: SearchInput, sortBy: SortInput): MultiTestProject!
+  testGetProject(id: ID!): TestProject
+  testListProjects(pagination: PaginationInput, searchBy: String): MultiTestProject!
 }
 
 extend type Mutation {
   testCreateProject(nameOfProject: String!, notMandatory: Int, arrayField: []Int!): ID!
   testUpdateProject(id: ID!, nameOfProject: String!, notMandatory: Int, arrayField: []Int!): String!
-  testDeleteProject(id: ID): String!
+  testDeleteProject(id: ID!): String!
 }
 `
 	a := NewGqlAst("test")

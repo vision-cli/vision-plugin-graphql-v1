@@ -19,7 +19,8 @@ result, err := r.srv.GetProject(nil, &req)
 if err != nil {
 	return nil, err
 }
-resp := PbToGoStruct[pb.GetProjectResponse, ProjectsProject](*result, true)
+resp := PbToGoStruct[pb.GetProjectResponse, ProjectsProject](*result, false)
+
 return &resp, nil
 }
 `
@@ -73,6 +74,14 @@ type ProjectsProject struct {
 	Name		string` + "\t\t" + `
 	Description	string` + "\t\t" + `
 }
+type ProjectsListProjectsRequest struct {
+	Pagination	*PaginationInput	
+	SearchBy	*string			
+}
+type MultiProjectsProject struct {
+	ProjectsProjects	[]*ProjectsProject	
+	Pagination		*Pagination		
+}
 type ProjectsCreateProjectRequest struct {
 	Name		string` + "\t" + `
 	Description	string` + "\t" + `
@@ -101,6 +110,14 @@ type ProjectsMilestone struct {
 	ID	graphql.ID` + "\t" + `
 	Name	string` + "\t\t" + `
 	Date	string` + "\t\t" + `
+}
+type ProjectsListMilestonesRequest struct {
+	Pagination	*PaginationInput	
+	SearchBy	*string			
+}
+type MultiProjectsMilestone struct {
+	ProjectsMilestones	[]*ProjectsMilestone	
+	Pagination		*Pagination		
 }
 type ProjectsCreateMilestoneRequest struct {
 	Name	string` + "\t" + `
